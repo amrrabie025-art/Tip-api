@@ -81,6 +81,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           gh --version
           ASSET_PATH="${{ steps.prepare_asset.outputs.asset_path }}"
@@ -101,14 +102,16 @@ jobs:
           API is not a production release.
           API version and build information: Node.js 20 build"
 
-          echo "Attempting to create GitHub Release: $RELEASE_TAG"
-          gh release create "$RELEASE_TAG" "$ASSET_PATH" \
+          echo "Attempting to create GitHub Release: $RELEASE_TAG for repo $GITHUB_REPOSITORY"
+          if ! gh release create "$RELEASE_TAG" "$ASSET_PATH" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
             --title "$RELEASE_TITLE" \
             --notes "$NOTES" \
-            --latest || {
-              echo "::error::Failed to publish GitHub Release. This is usually caused by GitHub Actions workflow permissions being set to Read-only in repository settings."
+            --latest; then
+              echo "::error::Failed to publish GitHub Release. Check that Workflow Permissions in repository Settings -> Actions -> General are set to 'Read and write permissions'."
               exit 1
-            }
+          fi
 
       - name: Report API download result
         if: always()
