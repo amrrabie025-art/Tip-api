@@ -103,13 +103,18 @@ jobs:
           API version and build information: Node.js 20 build"
 
           echo "Attempting to create GitHub Release: $RELEASE_TAG for repo $GITHUB_REPOSITORY"
-          if ! gh release create "$RELEASE_TAG" "$ASSET_PATH" \
+          if RELEASE_OUTPUT=$(gh release create "$RELEASE_TAG" "$ASSET_PATH" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "$RELEASE_TITLE" \
             --notes "$NOTES" \
-            --latest; then
-              echo "::error::Failed to publish GitHub Release. Check that Workflow Permissions in repository Settings -> Actions -> General are set to 'Read and write permissions'."
+            --latest 2>&1); then
+              echo "Release created successfully: $RELEASE_OUTPUT"
+          else
+              echo "::error::GitHub Release failed: $RELEASE_OUTPUT"
+              echo "RELEASE_ERR_MSG<<EOF" >> "$GITHUB_ENV"
+              echo "$RELEASE_OUTPUT" >> "$GITHUB_ENV"
+              echo "EOF" >> "$GITHUB_ENV"
               exit 1
           fi
 
@@ -136,4 +141,12 @@ jobs:
             echo "## Build Status" >> "$GITHUB_STEP_SUMMARY"
             echo "API build succeeded. Artifact **api-build** is available in workflow run artifacts." >> "$GITHUB_STEP_SUMMARY"
             echo "Release publishing failed." >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$RELEASE_ERR_MSG" ]; then
+              echo "### Error Details" >> "$GITHUB_STEP_SUMMARY"
+              echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "$RELEASE_ERR_MSG" >> "$GITHUB_STEP_SUMMARY"
+              echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "👉 **Fix**: Enable write permissions at: https://github.com/${GITHUB_REPOSITORY}/settings/actions (under 'Workflow permissions', select 'Read and write permissions')" >> "$GITHUB_STEP_SUMMARY"
           fi
